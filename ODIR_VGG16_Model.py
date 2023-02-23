@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications import resnet50, inception_v3, vgg16
+from keras.applications.vgg16 import VGG16
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
 from tensorflow.keras.optimizers import Adam
@@ -67,8 +68,8 @@ def generator_test_set(test, labels):
             yield test[i].reshape(1, 250, 250, 3), labels[i].reshape(1, 8)
 
 
-plot_dir = "/Users/giuse/Desktop/Models/InceptionV3/InceptionV3_foto"
-models_dir = "/Users/giuse/Desktop/Models/InceptionV3"
+plot_dir = "/Users/giuse/Desktop/Models/VGG16/VGG_foto"
+models_dir = "/Users/giuse/Desktop/Models/VGG16"
 batch_size = 16
 num_classes = 8
 epochs = 16
@@ -92,9 +93,10 @@ class_names = ['Normal', 'Diabetes', 'Glaucoma', 'Cataract', 'AMD', 'Hypertensio
 
 # Crea un'istanza dell'architettura Inception v3
 # https://www.tensorflow.org/api_docs/python/tf/keras/applications/inception_v3/InceptionV3
-#Crea la base pre-tainata del modello
-base_model = inception_v3.InceptionV3
+#base_model = inception_v3.InceptionV3
+base_model = VGG16
 base_model = base_model(weights='imagenet', include_top=False)
+
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
 x = Dense(1024, activation='relu')(x)
@@ -112,9 +114,10 @@ defined_metrics = [
 model.compile(loss='binary_crossentropy',
               optimizer=Adam(learning_rate=0.0001),
               metrics=defined_metrics)
+print(model.summary())
 
-x_train = inception_v3.preprocess_input(X_train)
-x_val = inception_v3.preprocess_input(X_valid)
+x_train = vgg16.preprocess_input(X_train)
+x_val = vgg16.preprocess_input(X_valid)
 
 
 # x_test = inception_v3.preprocess_input(X_test)
@@ -140,7 +143,7 @@ model_history = model.fit(generator_test_set(x_train, y_train), steps_per_epoch=
                           validation_steps=len(x_val), shuffle=False)
 
 print("...Saving Model...")
-model.save(os.path.join(models_dir, 'model_InceptionV3.h5'))
+model.save(os.path.join(models_dir, 'model_VGG16.h5'))
 
 
 def plot_history(history):

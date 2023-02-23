@@ -18,6 +18,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+
+
 IMG_SIZE = 250
 BATCH_SIZE = 16
 CLASS_NAMES = ['N', 'D', 'G', 'C', 'A', 'H', 'M', 'O']
@@ -36,10 +38,9 @@ if gpus:
 
 
 # directory utilizzate
-testing_directory = r'/Users/giuse/Desktop/ML_in_Health_Applications/final_data/testing_data/'
+#testing_directory = r'/Users/giuse/Desktop/ML_in_Health_Applications/final_data/testing_data/'
 training_directory = r'/Users/giuse/Desktop/ML_in_Health_Applications/final_data/training_data/'
-data_csv = "/Users/giuse/Desktop/file_labels_TEST.csv"  # file csv con le annotazioni
-
+data_csv = "/Users/giuse/Desktop/file_labels_final.csv"  # file csv con le annotazioni
 file_path = "/Users/giuse/Desktop/ML_in_Health_Applications/final_data/training_data/"
 
 # lettura del CSV
