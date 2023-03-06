@@ -1,15 +1,20 @@
+import csv
+import cv2
 import os
+import pandas as pd
 import numpy as np
-from matplotlib import pyplot as plt, image as mpimg
+import matplotlib.pyplot as plt
 from collections.abc import Sequence
 import tensorflow as tf
-from tensorflow.keras.preprocessing import image
+from tensorflow.keras import models, layers, optimizers, losses, metrics, utils, callbacks, applications
 from tensorflow.keras.applications import resnet50, inception_v3, vgg16
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import models, layers, optimizers, losses, metrics, utils, callbacks, applications
+from tqdm import tqdm
+
+IMG_SIZE = 250
 
 # Codice GPU
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -28,6 +33,127 @@ if gpus:
 # class names
 class_names = ['Normal', 'Diabetes', 'Glaucoma', 'Cataract', 'AMD', 'Hypertension', 'Myopia', 'Others']
 
+# directory utilizzate
+training_directory = r'/Users/giuse/Desktop/ML_in_Health_Applications/final_data/training_data/'
+data_csv = "/Users/giuse/Desktop/file_labels_final.csv"  # file csv con le annotazioni
+file_path = "/Users/giuse/Desktop/ML_in_Health_Applications/final_data/training_data/"
+plot_dir = "/Users/giuse/Desktop/Models/Test/foto"
+models_dir = "/Users/giuse/Desktop/Models/Test"
+batch_size = 16
+num_classes = 8
+epochs = 16
+
+# lettura del CSV
+data = pd.read_csv(data_csv, sep=';', encoding='utf-8')  # lettura del csv
+
+print(data.head().to_string())
+# print(data.columns)
+
+###creiamo le labels###
+training = []
+training_labels = []
+
+validation = []
+validation_labels = []
+
+
+#funznione per train
+
+def append_train(colum_id, labels, ts):
+    ts = ts + 1
+    print("Processing image: ", column_id, ", di labels: ", labels, ", ts: ", ts)
+    # load# first the image from the folder
+    eye_image = os.path.join(file_path, column_id)
+    image = cv2.imread(eye_image)
+    training.append(image)
+    training_labels.append(labels)
+
+
+def append_val(colum_id, labels, vs):
+    print("Processing image: ", column_id, ", di labels: ", labels, ", vs: ", vs)
+    # load# first the image from the folder
+    eye_image = os.path.join(file_path, column_id)
+    image = cv2.imread(eye_image)
+    validation.append(image)
+    validation_labels.append(labels)
+
+
+
+with open(data_csv) as csvDataFile:
+    csv_reader = csv.reader(csvDataFile, delimiter=',')
+    next(csv_reader)  # skip prima riga
+    ts = 0
+    vs = 0
+    threshold = 1000
+    normal = 0
+    for row in csv_reader:
+        column_id = row[0]
+        labels = [0, 0, 0, 0, 0, 0, 0, 0]
+        labels[0] = row[1]  # normal
+        labels[1] = row[2]  # diabetes
+        labels[2] = row[3]  # glaucoma
+        labels[3] = row[4]  # cataract
+        labels[4] = row[5]  # amd
+        labels[5] = row[6]  # hypertension
+        labels[6] = row[7]  # myopia
+        labels[7] = row[8]  # others
+        if(labels ==  ['1', '0', '0', '0', '0', '0', '0', '0']):
+            normal = normal + 1
+            if(normal < threshold):
+                ts = ts + 1
+                append_train(column_id, labels, ts) #limitazione della classe normale
+        elif (labels == ['0', '1', '0', '0', '0', '0', '0', '0']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif (labels == ['0', '0', '1', '0', '0', '0', '0', '0']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif (labels == ['0', '0', '0', '1', '0', '0', '0', '0']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif (labels == ['0', '0', '0', '0', '1', '0', '0', '0']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif (labels == ['0', '0', '0', '0', '0', '1', '0', '0']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif (labels == ['0', '0', '0', '0', '0', '0', '1', '0']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif (labels == ['0', '0', '0', '0', '0', '0', '0', '1']):
+            ts = ts + 1
+            append_train(column_id, labels, ts)
+        elif(True):
+            vs = vs + 1
+            append_val(column_id, labels, vs)
+
+
+
+
+print("numero di elementi del training set ", ts)
+print("numero di elementi del validation set ", vs)
+
+training = np.array(training, dtype='uint8')
+training_labels = np.array(training_labels, dtype='uint8')
+
+validation = np.array(validation, dtype='uint8')
+validation_labels = np.array(validation_labels, dtype='uint8')
+
+# # convert (number of images x height x width x number of channels) to (number of images x (height * width *3))
+# # for example (6069 * 28 * 28 * 3)-> (6069 x 2352) (14,274,288)
+training = np.reshape(training, [training.shape[0], training.shape[1], training.shape[2], training.shape[3]])
+validation = np.reshape(validation, [validation.shape[0], validation.shape[1], validation.shape[2], validation.shape[3]])
+
+print(training.shape)
+print(training_labels.shape)
+
+print(validation.shape)
+print(training_labels.shape)
+
+
+# save numpy array as .npy formats
+# np.save('training', training)
+# np.save('training_labels', training_labels)
 
 
 # Generators
@@ -69,18 +195,14 @@ def generator_test_set(test, labels):
             yield test[i].reshape(1, 250, 250, 3), labels[i].reshape(1, 8)
 
 
-plot_dir = "/Users/giuse/Desktop/Models/InceptionV3/InceptionV3_ALLCLASS/foto"
-models_dir = "/Users/giuse/Desktop/Models/InceptionV3/InceptionV3_ALLCLASS"
-batch_size = 16
-num_classes = 8
-epochs = 16
-IMG_SIZE = 250
-
-# Carichiamo il dataset
-df = np.load('training.npy')
-labels = np.load('training_labels.npy')
-
-X_train, X_valid, y_train, y_valid = train_test_split(df, labels, test_size=0.1)
+# Carichiamo il dataset appena creato
+#df = training
+#labels = training_labels
+X_train = training
+y_train = training_labels
+X_valid = validation
+y_valid = validation_labels
+#X_train, X_valid, y_train, y_valid = train_test_split(df, labels, test_size=0.2)
 
 # Per prima cosa, dividiamo il dataset in Training set e in un dataset residuo
 # X_train, X_rem, y_train, y_rem  = train_test_split(df, labels, train_size=0.8)
@@ -92,11 +214,10 @@ print(X_train.shape), print(y_train.shape)
 print(X_valid.shape), print(y_valid.shape)
 # print(X_test.shape), print(y_test.shape)
 
-class_names = ['Normal', 'Diabetes', 'Glaucoma', 'Cataract', 'AMD', 'Hypertension', 'Myopia', 'Others']
 
 # Crea un'istanza dell'architettura Inception v3
 # https://www.tensorflow.org/api_docs/python/tf/keras/applications/inception_v3/InceptionV3
-#Crea la base pre-tainata del modello
+# Crea la base pre-tainata del modello
 base_model = inception_v3.InceptionV3
 base_model = base_model(weights='imagenet', include_top=False)
 x = base_model.output
@@ -121,9 +242,6 @@ x_train = inception_v3.preprocess_input(X_train)
 x_val = inception_v3.preprocess_input(X_valid)
 
 
-# x_test = inception_v3.preprocess_input(X_test)
-
-
 # Funzione che server per valutare il modello dato, sul training, validation e testing set.
 def evaluate_model(model):
     print("Training set:\tLoss: %f\tMetric: %f" % tuple(model.evaluate(x_train, y_train, verbose=0)))
@@ -131,13 +249,11 @@ def evaluate_model(model):
     # print("Testing set:\tLoss: %f\tMetric: %f"% tuple(model.evaluate(x_test, y_test, verbose=0)))
 
 
-# callback da chiamare in caso in caso di overfitting
-callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, mode='min', verbose=1)
 
 # Callbacks per il modello
 def generate_callbacks(filepath, monitor='val_acc', mode='max'):
     return [
-        callbacks.ReduceLROnPlateau(monitor='val_loss', factor=.1, patience=2, verbose=0),
+        callbacks.ReduceLROnPlateau(monitor='val_loss', factor=.1, patience=2, verbose=0), # Reduce learning rate by a factor of 10, if performance hasn't been improving for 20 epochs
         callbacks.ModelCheckpoint(filepath=filepath, monitor=monitor, mode=mode, save_best_only=True, save_freq='epoch', save_weights_only=True)
     ]
 # train_datagen = Generator(x_train, y_train, batch_size)
@@ -145,12 +261,13 @@ def generate_callbacks(filepath, monitor='val_acc', mode='max'):
 # generator_test_set(x_test,y_test)
 model.summary()
 model_history = model.fit(generator_test_set(x_train, y_train),
+                          steps_per_epoch=len(x_train),
                           epochs=epochs, batch_size=batch_size, verbose=1, callbacks=generate_callbacks(models_dir),
                           validation_data=generator_validation_set(x_val, y_valid),
-                          shuffle=False)
+                          validation_steps=len(x_val), shuffle=False)
 
 print("...Saving Model...")
-model.save(os.path.join(models_dir, 'model_InceptionV3_allclass.h5'))
+model.save(os.path.join(models_dir, 'model_InceptionV3_single_class.h5'))
 
 
 def plot_history(history):
@@ -185,6 +302,3 @@ def plot_history(history):
 
 
 plot_history(model_history)
-
-#print("Evaluation of the model at the end of training")
-#evaluate_model(model)
