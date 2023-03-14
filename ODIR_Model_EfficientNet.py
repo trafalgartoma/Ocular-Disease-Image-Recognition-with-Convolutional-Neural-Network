@@ -17,13 +17,10 @@ from keras.layers import Dense, Flatten, Conv2D, Activation, Dropout
 from tensorflow.keras.applications import resnet50, inception_v3, vgg16
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
-from keras.losses import CategoricalCrossentropy
 from keras.optimizers import Adam
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import f1_score
-
+import efficientnet.keras as efn
 from sklearn.model_selection import train_test_split
-from tqdm import tqdm
+
 
 IMG_SIZE = 250
 print(tf.__version__)
@@ -59,7 +56,7 @@ epochs = 30
 # lettura del CSV
 data = pd.read_csv(data_csv, sep=';', encoding='utf-8')  # lettura del csv
 
-# print(data.head().to_string())
+#print(data.head().to_string())
 # print(data.columns)
 
 ###creiamo le labels###
@@ -67,7 +64,10 @@ training = []
 training_labels = []
 
 
+
 def dataAUG(original_image, labels):
+
+
     # CLAHE
     clahe_model = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     # For ease of understanding, we explicitly equalize each channel individually
@@ -84,7 +84,7 @@ def dataAUG(original_image, labels):
     training.append(horizontal_img)
     training_labels.append(labels)
 
-    # horizontal clahe
+    #horizontal clahe
     colorimage_b = clahe_model.apply(horizontal_img[:, :, 0])
     colorimage_g = clahe_model.apply(horizontal_img[:, :, 1])
     colorimage_r = clahe_model.apply(horizontal_img[:, :, 2])
@@ -93,7 +93,10 @@ def dataAUG(original_image, labels):
     training_labels.append(labels)
 
 
-# controlliamo le classi
+
+
+
+#controlliamo le classi
 normale = 0
 diabete = 0
 
@@ -101,19 +104,20 @@ with open(data_csv) as csvDataFile:
     csv_reader = csv.reader(csvDataFile, delimiter=',')
     next(csv_reader)  # skip prima riga
     iterazioine = 0
+    #soglia = 1500
     for row in csv_reader:
         if (iterazioine > -1):
             column_id = row[0]
             if (row[8] == '0'):  # se non è OTHER mette tutte le immagini nel dataset
                 iterazioine = iterazioine + 1
                 labels = [0, 0, 0, 0, 0, 0, 0]
-                labels[0] = row[1]  # N
-                labels[1] = row[2]  # D
-                labels[2] = row[3]  # G
-                labels[3] = row[4]  # C
-                labels[4] = row[5]  # AMD
-                labels[5] = row[6]  # HYPER
-                labels[6] = row[7]  # MYO
+                labels[0] = row[1] #N
+                labels[1] = row[2] #D
+                labels[2] = row[3] #G
+                labels[3] = row[4] #C
+                labels[4] = row[5] #AMD
+                labels[5] = row[6] #HYPER
+                labels[6] = row[7] #MYO
 
                 # carichiamo l'immagine di base
                 eye_image = os.path.join(file_path, column_id)
@@ -121,19 +125,29 @@ with open(data_csv) as csvDataFile:
                 image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 original_image = image.copy()
 
-                if (labels == ['1', '0', '0', '0', '0', '0', '0']):  # controllo se è un fondo normale
-                    normale = normale + 1
 
+                if (labels == ['1', '0', '0', '0', '0', '0', '0']): #controllo se è un fondo normale
+                    normale = normale + 1
+                    # print(column_id, ": è un fondo normale, fondi normali analizzati: ",normale)
+                    #si fa l'append dell'img normale
                     training.append(image)
                     training_labels.append(labels)
-                elif labels == ['0', '1', '0', '0', '0', '0', '0']:  # fondo con diabete
+                elif labels == ['0', '1', '0', '0', '0', '0', '0']: #fondo con diabete
                     training.append(image)
                     training_labels.append(labels)
-                elif (labels != ['1', '0', '0', '0', '0', '0', '0']) and (
-                        labels != ['0', '1', '0', '0', '0', '0', '0']):
+                elif (labels != ['1', '0', '0', '0', '0', '0', '0']) and (labels != ['0', '1', '0', '0', '0', '0', '0']):
                     training.append(image)
                     training_labels.append(labels)
                     dataAUG(original_image, labels)
+
+
+
+
+
+
+
+
+
 
 data = np.array(training, dtype='uint8')
 data_labels = np.array(training_labels, dtype='uint8')
@@ -164,7 +178,7 @@ def generator_test_set(test_a, labels):
 
 
 X_train, X_rem, y_train, y_rem = train_test_split(data, data_labels, test_size=0.2, shuffle=True)
-X_valid, X_test, y_valid, y_test = train_test_split(X_rem, y_rem, test_size=0.5, shuffle=True)
+X_valid, X_test, y_valid, y_test = train_test_split(X_rem, y_rem,  test_size=0.5, shuffle=True)
 
 print("Train: ", X_train.shape), print(y_train.shape)
 print("Valid: ", X_valid.shape), print(y_valid.shape)
@@ -173,18 +187,18 @@ print("Test: ", X_test.shape), print(y_test.shape)
 # Crea un'istanza dell'architettura Inception v3
 # https://www.tensorflow.org/api_docs/python/tf/keras/applications/inception_v3/InceptionV3
 # Crea la base pre-tainata del modello
-base_model = inception_v3.InceptionV3
+base_model = efn.EfficientNetB0
 base_model = base_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), weights='imagenet', include_top=False)
 # base_model = base_model(weights='imagenet', include_top=False)
 
-# x = base_model.output
-# x = GlobalAveragePooling2D()(x)
-# x = Dense(1024, activation='relu')(x)
-# predictions = Dense(num_classes, activation='sigmoid')(x)
-# model = Model(inputs=base_model.input, outputs=predictions)
+#x = base_model.output
+#x = GlobalAveragePooling2D()(x)
+#x = Dense(1024, activation='relu')(x)
+#predictions = Dense(num_classes, activation='sigmoid')(x)
+#model = Model(inputs=base_model.input, outputs=predictions)
 
 for i in base_model.layers:
-    i.trainable = False
+    i.trainable=False
 
 x = Flatten()(base_model.output)
 pred = Dense(num_classes, activation='sigmoid')(x)
@@ -209,9 +223,9 @@ model.compile(loss='binary_crossentropy',
               metrics=defined_metrics)
 
 # preprocessing  imput
-x_train = inception_v3.preprocess_input(X_train)
-x_val = inception_v3.preprocess_input(X_valid)
-x_test = inception_v3.preprocess_input(X_test)
+x_train = tf.keras.applications.efficientnet.preprocess_input(X_train)
+x_val = tf.keras.applications.efficientnet.preprocess_input(X_valid)
+x_test = tf.keras.applications.efficientnet.preprocess_input(X_test)
 
 # save numpy array as .npy formats
 np.save('testing', x_test)
@@ -229,7 +243,7 @@ np.save('valid_labels', y_valid)
 # Callbacks per il modello
 def generate_callbacks(filepath, monitor='val_accuracy', mode='max'):
     return [
-        callbacks.ReduceLROnPlateau(monitor='val_loss', factor=.1, patience=2, verbose=0),
+        callbacks.ReduceLROnPlateau(monitor='val_loss', factor=.1, patience=2, verbose=0), # Reduce learning rate by a factor of 10, if performance hasn't been improving for 20 epochs
         callbacks.EarlyStopping(monitor='val_loss', patience=5, mode='min', verbose=1),
         callbacks.ModelCheckpoint(filepath=filepath, monitor=monitor, mode=mode, save_best_only=True, save_freq='epoch',
                                   save_weights_only=True, verbose=1)
@@ -244,7 +258,7 @@ model_history = model.fit(generator_test_set(x_train, y_train),
                           validation_steps=len(x_val), shuffle=False)
 
 print("...Saving Model...")
-model.save(os.path.join(models_dir, 'model_InceptionV3.h5'))
+model.save(os.path.join(models_dir, 'model_VGG16.h5'))
 
 
 def plot_history(history):

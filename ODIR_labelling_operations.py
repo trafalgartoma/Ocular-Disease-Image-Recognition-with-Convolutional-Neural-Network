@@ -6,17 +6,7 @@ import pandas as pd
 path_csv = "/Users/giuse/Desktop/ML_in_Health_Applications/base_data/dataset_base.csv"
 path_csv_finale = "/Users/giuse/Desktop/file_labels_finale.csv"
 conta_img = 0
-'''
-# blacklist delle immagini da scartare
-def is_blacklisted_image(image_name):
-    # creo una blacklist delle immagini che hanno difetti nella foto
-    blacklist = {'2174_right.jpg', '2175_left.jpg', '2176_left.jpg', '2177_left.jpg', '2177_right.jpg',
-                 '2178_right.jpg', '2179_left.jpg', '2179_right.jpg', '2180_left.jpg', '2180_right.jpg',
-                 '2181_left.jpg', '2181_right.jpg', '2182_left.jpg', '2182_right.jpg', '2957_left.jpg',
-                 '2957_right.jpg'}
 
-    return image_name in blacklist
-'''
 
 # blacklist delle keywords sa non processare
 def is_blacklisted_keyword(keyword):

@@ -15,6 +15,7 @@ from tensorflow.keras import models, layers, optimizers, losses, metrics, utils,
 from keras.layers import MaxPool2D
 from keras.layers import Dense, Flatten, Conv2D, Activation, Dropout
 from tensorflow.keras.applications import resnet50, inception_v3, vgg16
+from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Input
 from keras.losses import CategoricalCrossentropy
@@ -173,7 +174,7 @@ print("Test: ", X_test.shape), print(y_test.shape)
 # Crea un'istanza dell'architettura Inception v3
 # https://www.tensorflow.org/api_docs/python/tf/keras/applications/inception_v3/InceptionV3
 # Crea la base pre-tainata del modello
-base_model = inception_v3.InceptionV3
+base_model = ResNet50
 base_model = base_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), weights='imagenet', include_top=False)
 # base_model = base_model(weights='imagenet', include_top=False)
 
@@ -209,9 +210,9 @@ model.compile(loss='binary_crossentropy',
               metrics=defined_metrics)
 
 # preprocessing  imput
-x_train = inception_v3.preprocess_input(X_train)
-x_val = inception_v3.preprocess_input(X_valid)
-x_test = inception_v3.preprocess_input(X_test)
+x_train = resnet50.preprocess_input(X_train)
+x_val = resnet50.preprocess_input(X_valid)
+x_test = resnet50.preprocess_input(X_test)
 
 # save numpy array as .npy formats
 np.save('testing', x_test)
@@ -244,7 +245,7 @@ model_history = model.fit(generator_test_set(x_train, y_train),
                           validation_steps=len(x_val), shuffle=False)
 
 print("...Saving Model...")
-model.save(os.path.join(models_dir, 'model_InceptionV3.h5'))
+model.save(os.path.join(models_dir, 'model_ResNet50.h5'))
 
 
 def plot_history(history):
